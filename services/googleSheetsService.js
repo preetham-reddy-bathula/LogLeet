@@ -9,6 +9,7 @@ export const fetchData = async (spreadsheetId, apiKey, setRecords) => {
     setRecords(response.data.values.slice(1));
   } catch (error) {
     console.error(error);
+    alert('Failed to fetch data from Google Sheets: ' + error.message);
   }
 };
 
@@ -21,6 +22,7 @@ export const addProblem = async (spreadsheetId, apiKey, data, setRecords, schedu
     await axios.post(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1:append?valueInputOption=RAW&key=${apiKey}`,
       {
+        range: 'Sheet1',
         values: [[
           data.problemName,
           data.problemLink,
@@ -42,7 +44,7 @@ export const addProblem = async (spreadsheetId, apiKey, data, setRecords, schedu
     alert('Problem added successfully!');
   } catch (error) {
     console.error(error);
-    alert('Failed to add problem');
+    alert('Failed to add problem: ' + error.message);
   }
 };
 
@@ -77,7 +79,7 @@ export const updateProblem = async (spreadsheetId, apiKey, data, index, setRecor
     alert('Problem updated successfully!');
   } catch (error) {
     console.error(error);
-    alert('Failed to update problem');
+    alert('Failed to update problem: ' + error.message);
   }
 };
 
@@ -91,6 +93,6 @@ export const deleteProblem = async (spreadsheetId, apiKey, index, setRecords) =>
     alert('Problem deleted successfully!');
   } catch (error) {
     console.error(error);
-    alert('Failed to delete problem');
+    alert('Failed to delete problem: ' + error.message);
   }
 };

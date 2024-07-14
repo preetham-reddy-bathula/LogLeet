@@ -1,6 +1,7 @@
+// src/components/MainScreen.js
 import React, { useState, useEffect } from 'react';
 import {
-  View, TextInput, Button, Text, FlatList, TouchableOpacity, Linking
+  View, TextInput, Button, Text, FlatList, TouchableOpacity, Linking, TouchableWithoutFeedback, SafeAreaView
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -27,8 +28,6 @@ const MainScreen = () => {
   const [editingIndex, setEditingIndex] = useState(-1);
   const [showFirstAttemptDatePicker, setShowFirstAttemptDatePicker] = useState(false);
   const [showRevisitDatePicker, setShowRevisitDatePicker] = useState(false);
-  const [revisitDate, setRevisitDate] = useState(new Date());
-  const [lastRevisitDate, setLastRevisitDate] = useState(new Date());
   const [showLastRevisitDatePicker, setShowLastRevisitDatePicker] = useState(false);
 
   useEffect(() => {
@@ -44,13 +43,13 @@ const MainScreen = () => {
   };
 
   const onRevisitDateChange = (event, selectedDate) => {
-    const currentDate = selectedDate || revisitDate;
+    const currentDate = selectedDate || new Date();
     setShowRevisitDatePicker(false);
     setRevisitDate(currentDate);
   };
 
   const onLastRevisitDateChange = (event, selectedDate) => {
-    const currentDate = selectedDate || lastRevisitDate;
+    const currentDate = selectedDate || new Date();
     setShowLastRevisitDatePicker(false);
     setLastRevisitDate(currentDate);
   };
@@ -63,7 +62,7 @@ const MainScreen = () => {
       timeTaken,
       firstAttemptDate,
       notes,
-      revisitDate,
+      revisitDate: calculateRevisitDate(firstAttemptDate, revisitFrequency),
       lastRevisitDate,
       revisitFrequency,
       timeComplexity,
@@ -104,41 +103,34 @@ const MainScreen = () => {
     });
   };
 
-  return (
-    <View style={styles.container}>
-      {!isConnected ? (
-        <View>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Spreadsheet ID"
-            value={spreadsheetId}
-            onChangeText={setSpreadsheetId}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Enter API Key"
-            value={apiKey}
-            onChangeText={setApiKey}
-          />
-          <Button title="Connect" onPress={() => setIsConnected(true)} />
-        </View>
-      ) : (
-        <View style={{ flex: 1, width: '100%' }}>
-          <TextInput
-            style={styles.input}
-            placeholder="Problem Name"
-            value={problemName}
-            onChangeText={setProblemName}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Problem Link"
-            value={problemLink}
-            onChangeText={setProblemLink}
-          />
+  const renderForm = () => (
+    <View style={styles.formContainer}>
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Problem Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Problem Name"
+          value={problemName}
+          onChangeText={setProblemName}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Problem Link</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Problem Link"
+          value={problemLink}
+          onChangeText={setProblemLink}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Difficulty Level</Text>
+        <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={difficultyLevel}
-            style={styles.input}
+            style={styles.picker}
             onValueChange={(itemValue) => setDifficultyLevel(itemValue)}
           >
             <Picker.Item label="Select Difficulty Level" value="" />
@@ -146,10 +138,15 @@ const MainScreen = () => {
             <Picker.Item label="Medium" value="medium" />
             <Picker.Item label="Hard" value="hard" />
           </Picker>
-          <Text>Time Taken (minutes)</Text>
+        </View>
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Time Taken (minutes)</Text>
+        <View style={styles.pickerWrapper}>
           <Picker
             selectedValue={timeTaken}
-            style={styles.input}
+            style={styles.picker}
             onValueChange={(itemValue) => setTimeTaken(itemValue)}
           >
             {[...Array(121).keys()].map((val) => (
@@ -157,101 +154,182 @@ const MainScreen = () => {
             ))}
             <Picker.Item label="Greater than 120" value=">120" />
           </Picker>
-          <Text>First Attempt Date</Text>
-          <Button onPress={() => setShowFirstAttemptDatePicker(true)} title={firstAttemptDate.toDateString()} />
-          {showFirstAttemptDatePicker && (
-            <DateTimePicker
-              value={firstAttemptDate}
-              mode="date"
-              display="default"
-              onChange={onFirstAttemptDateChange}
-            />
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Notes"
-            value={notes}
-            onChangeText={setNotes}
+        </View>
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>First Attempt Date</Text>
+        <TouchableOpacity onPress={() => setShowFirstAttemptDatePicker(true)} style={styles.dateButton}>
+          <Text>{firstAttemptDate.toDateString()}</Text>
+        </TouchableOpacity>
+        {showFirstAttemptDatePicker && (
+          <DateTimePicker
+            value={firstAttemptDate}
+            mode="date"
+            display="default"
+            onChange={onFirstAttemptDateChange}
           />
-          <Text>Revisit Date</Text>
-          <Button onPress={() => setShowRevisitDatePicker(true)} title={revisitDate.toDateString()} />
-          {showRevisitDatePicker && (
-            <DateTimePicker
-              value={revisitDate}
-              mode="date"
-              display="default"
-              onChange={onRevisitDateChange}
-            />
-          )}
-          <Text>Last Revisit Date</Text>
-          <Button onPress={() => setShowLastRevisitDatePicker(true)} title={lastRevisitDate.toDateString()} />
-          {showLastRevisitDatePicker && (
-            <DateTimePicker
-              value={lastRevisitDate}
-              mode="date"
-              display="default"
-              onChange={onLastRevisitDateChange}
-            />
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Revisit Frequency (days)"
-            keyboardType="numeric"
-            value={revisitFrequency.toString()}
-            onChangeText={(text) => setRevisitFrequency(Number(text))}
+        )}
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Notes</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Notes"
+          value={notes}
+          onChangeText={setNotes}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Revisit Date</Text>
+        <TouchableOpacity onPress={() => setShowRevisitDatePicker(true)} style={styles.dateButton}>
+          <Text>{revisitDate.toDateString()}</Text>
+        </TouchableOpacity>
+        {showRevisitDatePicker && (
+          <DateTimePicker
+            value={revisitDate}
+            mode="date"
+            display="default"
+            onChange={onRevisitDateChange}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Time Complexity"
-            value={timeComplexity}
-            onChangeText={setTimeComplexity}
+        )}
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Last Revisit Date</Text>
+        <TouchableOpacity onPress={() => setShowLastRevisitDatePicker(true)} style={styles.dateButton}>
+          <Text>{lastRevisitDate.toDateString()}</Text>
+        </TouchableOpacity>
+        {showLastRevisitDatePicker && (
+          <DateTimePicker
+            value={lastRevisitDate}
+            mode="date"
+            display="default"
+            onChange={onLastRevisitDateChange}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Space Complexity"
-            value={spaceComplexity}
-            onChangeText={setSpaceComplexity}
+        )}
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Revisit Frequency (days)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Revisit Frequency (days)"
+          keyboardType="numeric"
+          value={revisitFrequency.toString()}
+          onChangeText={(text) => setRevisitFrequency(Number(text))}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Time Complexity</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Time Complexity"
+          value={timeComplexity}
+          onChangeText={setTimeComplexity}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Space Complexity</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Space Complexity"
+          value={spaceComplexity}
+          onChangeText={setSpaceComplexity}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Company Tags</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Company Tags"
+          value={companyTags}
+          onChangeText={setCompanyTags}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Company Tags"
-            value={companyTags}
-            onChangeText={setCompanyTags}
-          />
+        </View>
+  
+        <View style={styles.formGroup}>
           <Button
             title={editingIndex === -1 ? "Add Problem" : "Update Problem"}
             onPress={handleAddOrUpdateProblem}
           />
+        </View>
+      </View>
+    );
+  
+    const editProblem = (index) => {
+      const problem = records[index];
+      setProblemName(problem[0]);
+      setProblemLink(problem[1]);
+      setDifficultyLevel(problem[2]);
+      setTimeTaken(problem[3]);
+      setFirstAttemptDate(new Date(problem[4]));
+      setNotes(problem[5]);
+      setRevisitDate(new Date(problem[6]));
+      setLastRevisitDate(new Date(problem[7]));
+      setRevisitFrequency(problem[8]);
+      setTimeComplexity(problem[9]);
+      setSpaceComplexity(problem[10]);
+      setCompanyTags(problem[11]);
+      setEditingIndex(index);
+    };
+  
+    const renderItem = ({ item, index }) => (
+      <View style={styles.record}>
+        <TouchableOpacity onPress={() => editProblem(index)}>
+          <Text style={styles.recordText}>{item[0]}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => Linking.openURL(item[1])}>
+          <Text style={[styles.recordText, styles.link]}>{item[1]}</Text>
+        </TouchableOpacity>
+        <Text style={styles.recordText}>{item[2]}</Text>
+        <Text style={styles.recordText}>{item[3]}</Text>
+        <Text style={styles.recordText}>{item[4]}</Text>
+        <Text style={styles.recordText}>{item[5]}</Text>
+        <Text style={styles.recordText}>{item[6]}</Text>
+        <Text style={styles.recordText}>{item[7]}</Text>
+        <Text style={styles.recordText}>{item[8]}</Text>
+        <Text style={styles.recordText}>{item[9]}</Text>
+        <Text style={styles.recordText}>{item[10]}</Text>
+        <Text style={styles.recordText}>{item[11]}</Text>
+        <Button title="Delete" onPress={() => deleteProblem(spreadsheetId, apiKey, index, setRecords)} />
+      </View>
+    );
+  
+    return (
+      <SafeAreaView style={styles.container}>
+        {!isConnected ? (
+          <View style={styles.connectionForm}>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Spreadsheet ID"
+              value={spreadsheetId}
+              onChangeText={setSpreadsheetId}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter API Key"
+              value={apiKey}
+              onChangeText={setApiKey}
+            />
+            <Button title="Connect" onPress={() => setIsConnected(true)} />
+          </View>
+        ) : (
           <FlatList
+            ListHeaderComponent={renderForm}
             data={records}
             keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item, index }) => (
-              <View style={styles.record}>
-                <TouchableOpacity onPress={() => editProblem(index)}>
-                  <Text style={styles.recordText}>{item[0]}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => Linking.openURL(item[1])}>
-                  <Text style={[styles.recordText, styles.link]}>{item[1]}</Text>
-                </TouchableOpacity>
-                <Text style={styles.recordText}>{item[2]}</Text>
-                <Text style={styles.recordText}>{item[3]}</Text>
-                <Text style={styles.recordText}>{item[4]}</Text>
-                <Text style={styles.recordText}>{item[5]}</Text>
-                <Text style={styles.recordText}>{item[6]}</Text>
-                <Text style={styles.recordText}>{item[7]}</Text>
-                <Text style={styles.recordText}>{item[8]}</Text>
-                <Text style={styles.recordText}>{item[9]}</Text>
-                <Text style={styles.recordText}>{item[10]}</Text>
-                <Text style={styles.recordText}>{item[11]}</Text>
-                <Button title="Delete" onPress={() => deleteProblem(spreadsheetId, apiKey, index, setRecords)} />
-              </View>
-            )}
+            renderItem={renderItem}
           />
-        </View>
-      )}
-    </View>
-  );
-};
-
-export default MainScreen;
-
+        )}
+      </SafeAreaView>
+    );
+  };
+  
+  export default MainScreen;
+  
