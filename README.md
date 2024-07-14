@@ -1,50 +1,28 @@
-# Welcome to your Expo app 👋
+# LogLeet
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+LogLeet is a cross-platform mobile app for tracking your problem-solving progress on platforms like LeetCode. The app allows you to log problems with various details, store them in Firebase, and receive notifications for revisits.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Track problem-solving progress with details like problem name, link, difficulty level, time taken, first attempt date, notes, revisit date, last revisit date, revisit frequency, time complexity, space complexity, and company tags.
+- Edit and delete existing records.
+- Receive notifications to revisit problems.
+
+## Setup and Installation
+
+### Prerequisites
+
+- Node.js (v14 or later)
+- npm (v6 or later)
+- Expo CLI
+- Firebase project setup with Realtime Database enabled
+
+### Installation
+
+1. **Clone the repository:**
 
    ```bash
+   git clone https://github.com/preetham-reddy-bathula/LogLeet.git
+   cd LogLeet
    npm install
-   ```
 
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
