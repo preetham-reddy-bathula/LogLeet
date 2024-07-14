@@ -1,19 +1,16 @@
 // src/components/MainScreen.js
 import React, { useState, useEffect } from 'react';
 import {
-  View, TextInput, Button, Text, FlatList, TouchableOpacity, Linking, TouchableWithoutFeedback, SafeAreaView
+  View, TextInput, Button, Text, FlatList, TouchableOpacity, Linking, SafeAreaView
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as Notifications from 'expo-notifications';
-import { calculateRevisitDate } from '../utils/dateUtils';
-import { fetchData, addProblem, updateProblem, deleteProblem } from '../services/googleSheetsService';
+import { ref, set, push, onValue, remove, update } from 'firebase/database';
+import { database } from '../services/firebase';
 import styles from '../styles/styles';
+import { registerForPushNotificationsAsync, scheduleNotification } from '../services/notificationService';
 
 const MainScreen = () => {
-  const [spreadsheetId, setSpreadsheetId] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
   const [problemName, setProblemName] = useState('');
   const [problemLink, setProblemLink] = useState('');
   const [difficultyLevel, setDifficultyLevel] = useState('');
@@ -21,6 +18,8 @@ const MainScreen = () => {
   const [firstAttemptDate, setFirstAttemptDate] = useState(new Date());
   const [notes, setNotes] = useState('');
   const [revisitFrequency, setRevisitFrequency] = useState(14);
+  const [revisitDate, setRevisitDate] = useState(new Date());
+  const [lastRevisitDate, setLastRevisitDate] = useState(new Date());
   const [timeComplexity, setTimeComplexity] = useState('');
   const [spaceComplexity, setSpaceComplexity] = useState('');
   const [companyTags, setCompanyTags] = useState('');
@@ -31,10 +30,15 @@ const MainScreen = () => {
   const [showLastRevisitDatePicker, setShowLastRevisitDatePicker] = useState(false);
 
   useEffect(() => {
-    if (isConnected) {
-      fetchData(spreadsheetId, apiKey, setRecords);
-    }
-  }, [isConnected]);
+    registerForPushNotificationsAsync();
+
+    const recordsRef = ref(database, 'records/');
+    onValue(recordsRef, (snapshot) => {
+      const data = snapshot.val();
+      const recordsList = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+      setRecords(recordsList);
+    });
+  }, []);
 
   const onFirstAttemptDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || firstAttemptDate;
@@ -55,15 +59,18 @@ const MainScreen = () => {
   };
 
   const handleAddOrUpdateProblem = () => {
+    const calculatedRevisitDate = new Date(firstAttemptDate);
+    calculatedRevisitDate.setDate(calculatedRevisitDate.getDate() + revisitFrequency);
+
     const data = {
       problemName,
       problemLink,
       difficultyLevel,
       timeTaken,
-      firstAttemptDate,
+      firstAttemptDate: firstAttemptDate.toISOString().split('T')[0],
       notes,
-      revisitDate: calculateRevisitDate(firstAttemptDate, revisitFrequency),
-      lastRevisitDate,
+      revisitDate: calculatedRevisitDate.toISOString().split('T')[0],
+      lastRevisitDate: lastRevisitDate.toISOString().split('T')[0],
       revisitFrequency,
       timeComplexity,
       spaceComplexity,
@@ -71,11 +78,19 @@ const MainScreen = () => {
     };
 
     if (editingIndex === -1) {
-      addProblem(spreadsheetId, apiKey, data, setRecords, scheduleNotification);
+      const newRecordRef = push(ref(database, 'records'));
+      set(newRecordRef, data);
     } else {
-      updateProblem(spreadsheetId, apiKey, data, editingIndex, setRecords, scheduleNotification);
+      const recordRef = ref(database, `records/${records[editingIndex].id}`);
+      update(recordRef, data);
       setEditingIndex(-1);
     }
+
+    scheduleNotification(
+      'Time to revisit a problem!',
+      `It's time to revisit the problem: ${problemName}`,
+      calculatedRevisitDate
+    );
 
     setProblemName('');
     setProblemLink('');
@@ -91,16 +106,26 @@ const MainScreen = () => {
     setCompanyTags('');
   };
 
-  const scheduleNotification = async (date) => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Time to revisit a problem!",
-        body: 'Check your LogLeet app for details.',
-      },
-      trigger: {
-        date: new Date(date),
-      },
-    });
+  const editProblem = (index) => {
+    const problem = records[index];
+    setProblemName(problem.problemName);
+    setProblemLink(problem.problemLink);
+    setDifficultyLevel(problem.difficultyLevel);
+    setTimeTaken(problem.timeTaken);
+    setFirstAttemptDate(new Date(problem.firstAttemptDate));
+    setNotes(problem.notes);
+    setRevisitDate(new Date(problem.revisitDate));
+    setLastRevisitDate(new Date(problem.lastRevisitDate));
+    setRevisitFrequency(problem.revisitFrequency);
+    setTimeComplexity(problem.timeComplexity);
+    setSpaceComplexity(problem.spaceComplexity);
+    setCompanyTags(problem.companyTags);
+    setEditingIndex(index);
+  };
+
+  const deleteProblem = (index) => {
+    const recordRef = ref(database, `records/${records[index].id}`);
+    remove(recordRef);
   };
 
   const renderForm = () => (
@@ -250,86 +275,51 @@ const MainScreen = () => {
           placeholder="Company Tags"
           value={companyTags}
           onChangeText={setCompanyTags}
-          />
-        </View>
-  
-        <View style={styles.formGroup}>
-          <Button
-            title={editingIndex === -1 ? "Add Problem" : "Update Problem"}
-            onPress={handleAddOrUpdateProblem}
-          />
-        </View>
+        />
       </View>
-    );
-  
-    const editProblem = (index) => {
-      const problem = records[index];
-      setProblemName(problem[0]);
-      setProblemLink(problem[1]);
-      setDifficultyLevel(problem[2]);
-      setTimeTaken(problem[3]);
-      setFirstAttemptDate(new Date(problem[4]));
-      setNotes(problem[5]);
-      setRevisitDate(new Date(problem[6]));
-      setLastRevisitDate(new Date(problem[7]));
-      setRevisitFrequency(problem[8]);
-      setTimeComplexity(problem[9]);
-      setSpaceComplexity(problem[10]);
-      setCompanyTags(problem[11]);
-      setEditingIndex(index);
-    };
-  
-    const renderItem = ({ item, index }) => (
-      <View style={styles.record}>
-        <TouchableOpacity onPress={() => editProblem(index)}>
-          <Text style={styles.recordText}>{item[0]}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => Linking.openURL(item[1])}>
-          <Text style={[styles.recordText, styles.link]}>{item[1]}</Text>
-        </TouchableOpacity>
-        <Text style={styles.recordText}>{item[2]}</Text>
-        <Text style={styles.recordText}>{item[3]}</Text>
-        <Text style={styles.recordText}>{item[4]}</Text>
-        <Text style={styles.recordText}>{item[5]}</Text>
-        <Text style={styles.recordText}>{item[6]}</Text>
-        <Text style={styles.recordText}>{item[7]}</Text>
-        <Text style={styles.recordText}>{item[8]}</Text>
-        <Text style={styles.recordText}>{item[9]}</Text>
-        <Text style={styles.recordText}>{item[10]}</Text>
-        <Text style={styles.recordText}>{item[11]}</Text>
-        <Button title="Delete" onPress={() => deleteProblem(spreadsheetId, apiKey, index, setRecords)} />
+
+      <View style={styles.formGroup}>
+        <Button
+          title={editingIndex === -1 ? "Add Problem" : "Update Problem"}
+          onPress={handleAddOrUpdateProblem}
+        />
       </View>
-    );
-  
-    return (
-      <SafeAreaView style={styles.container}>
-        {!isConnected ? (
-          <View style={styles.connectionForm}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Spreadsheet ID"
-              value={spreadsheetId}
-              onChangeText={setSpreadsheetId}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter API Key"
-              value={apiKey}
-              onChangeText={setApiKey}
-            />
-            <Button title="Connect" onPress={() => setIsConnected(true)} />
-          </View>
-        ) : (
-          <FlatList
-            ListHeaderComponent={renderForm}
-            data={records}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={renderItem}
-          />
-        )}
-      </SafeAreaView>
-    );
-  };
-  
-  export default MainScreen;
-  
+    </View>
+  );
+
+  const renderItem = ({ item, index }) => (
+    <View style={styles.record}>
+      <TouchableOpacity onPress={() => editProblem(index)}>
+        <Text style={styles.recordText}>{item.problemName}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => Linking.openURL(item.problemLink)}>
+        <Text style={[styles.recordText, styles.link]}>{item.problemLink}</Text>
+      </TouchableOpacity>
+      <Text style={styles.recordText}>{item.difficultyLevel}</Text>
+      <Text style={styles.recordText}>{item.timeTaken}</Text>
+      <Text style={styles.recordText}>{item.firstAttemptDate}</Text>
+      <Text style={styles.recordText}>{item.notes}</Text>
+      <Text style={styles.recordText}>{item.revisitDate}</Text>
+      <Text style={styles.recordText}>{item.lastRevisitDate}</Text>
+      <Text style={styles.recordText}>{item.revisitFrequency}</Text>
+      <Text style={styles.recordText}>{item.timeComplexity}</Text>
+      <Text style={styles.recordText}>{item.spaceComplexity}</Text>
+      <Text style={styles.recordText}>{item.companyTags}</Text>
+      <Button title="Delete" onPress={() => deleteProblem(index)} />
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        ListHeaderComponent={renderForm}
+        data={records}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={renderItem}
+      />
+    </SafeAreaView>
+  );
+};
+
+export default MainScreen;
+
