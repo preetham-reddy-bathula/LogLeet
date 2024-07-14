@@ -7,11 +7,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     marginTop: 20,
   },
-  connectionForm: {
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   formContainer: {
     padding: 20,
   },
