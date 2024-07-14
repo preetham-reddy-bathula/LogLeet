@@ -32,9 +32,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#fff',
   },
-  picker: {
-    height: 40,
-    width: '100%',
+  modalSelector: {
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 5,
+    backgroundColor: '#fff',
   },
   dateButton: {
     height: 40,

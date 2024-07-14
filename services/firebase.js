@@ -1,16 +1,27 @@
 // src/firebase.js
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
+import {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_DATABASE_URL,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID,
+  FIREBASE_MEASUREMENT_ID,
+} from '@env';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBzTBJR3CnS8fhIkmVj2RDJT0FrHfa4S3Q",
-  authDomain: "logleet-5f8c5.firebaseapp.com",
-  projectId: "logleet-5f8c5",
-  storageBucket: "logleet-5f8c5.appspot.com",
-  messagingSenderId: "1071422322545",
-  appId: "1:1071422322545:web:2749764bc68b149414e8d0",
-  measurementId: "G-MCWBYCBQ62"
+  apiKey: FIREBASE_API_KEY,
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  projectId: FIREBASE_PROJECT_ID,
+  databaseURL: FIREBASE_DATABASE_URL,
+  storageBucket: FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
+  appId: FIREBASE_APP_ID,
+  measurementId: FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase

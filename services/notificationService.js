@@ -1,6 +1,7 @@
 // src/services/notificationService.js
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { EXPO_PROJECT_ID } from '@env';
 
 export const registerForPushNotificationsAsync = async () => {
   let token;
@@ -25,7 +26,8 @@ export const registerForPushNotificationsAsync = async () => {
     return;
   }
 
-  token = (await Notifications.getExpoPushTokenAsync()).data;
+  const projectId = EXPO_PROJECT_ID;  
+  token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 
   return token;
 };
