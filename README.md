@@ -11,11 +11,6 @@ LogLeet is a cross-platform mobile application (iOS and Android) built with Reac
 - Edit and delete problem records.
 - Receive notifications for revisit reminders.
 
-## Screenshots
-
-![Splash Screen](path_to_splash_screen_screenshot)
-![Main Screen](path_to_main_screen_screenshot)
-![Add/Edit Problem Screen](path_to_add_edit_screen_screenshot)
 
 ## Tech Stack
 
