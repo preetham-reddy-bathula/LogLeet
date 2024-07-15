@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, TextInput, Button, Text, FlatList, TouchableOpacity, Linking, SafeAreaView, KeyboardAvoidingView, Platform
+  View, Text, FlatList, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Modal, StyleSheet
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
+import { TextInput, Button } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ModalSelector from 'react-native-modal-selector';
 import { ref, set, push, onValue, remove, update } from 'firebase/database';
 import { database } from '../services/firebase';
-import styles from '../styles/styles';
 import { registerForPushNotificationsAsync, scheduleNotification } from '../services/notificationService';
 
 const MainScreen = () => {
   const { control, handleSubmit, reset, setValue } = useForm();
   const [records, setRecords] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(-1);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [showForm, setShowForm] = useState(false);
   const [showFirstAttemptDatePicker, setShowFirstAttemptDatePicker] = useState(false);
   const [showRevisitDatePicker, setShowRevisitDatePicker] = useState(false);
   const [showLastRevisitDatePicker, setShowLastRevisitDatePicker] = useState(false);
@@ -61,13 +62,12 @@ const MainScreen = () => {
       revisitDate: calculatedRevisitDate.toISOString().split('T')[0],
     };
 
-    if (editingIndex === -1) {
+    if (selectedRecord) {
+      const recordRef = ref(database, `records/${selectedRecord.id}`);
+      update(recordRef, recordData);
+    } else {
       const newRecordRef = push(ref(database, 'records'));
       set(newRecordRef, recordData);
-    } else {
-      const recordRef = ref(database, `records/${records[editingIndex].id}`);
-      update(recordRef, recordData);
-      setEditingIndex(-1);
     }
 
     scheduleNotification(
@@ -77,29 +77,21 @@ const MainScreen = () => {
     );
 
     reset();
+    setSelectedRecord(null);
+    setShowForm(false);
   };
 
-  const editProblem = (index) => {
-    const problem = records[index];
-    Object.keys(problem).forEach((key) => setValue(key, problem[key]));
-    setEditingIndex(index);
+  const editProblem = (record) => {
+    setSelectedRecord(record);
+    Object.keys(record).forEach((key) => setValue(key, record[key]));
+    setShowForm(true);
   };
 
-  const deleteProblem = (index) => {
-    const recordRef = ref(database, `records/${records[index].id}`);
+  const deleteProblem = (record) => {
+    const recordRef = ref(database, `records/${record.id}`);
     remove(recordRef);
-    setEditingIndex(-1);
-    reset();
+    setSelectedRecord(null);
   };
-
-  const timeTakenOptions = [...Array(121).keys()].map((val) => ({ key: val, label: `${val}` }));
-  timeTakenOptions.push({ key: '>120', label: 'Greater than 120' });
-
-  const difficultyLevelOptions = [
-    { key: 'easy', label: 'Easy' },
-    { key: 'medium', label: 'Medium' },
-    { key: 'hard', label: 'Hard' },
-  ];
 
   const renderForm = () => (
     <View style={styles.formContainer}>
@@ -145,7 +137,11 @@ const MainScreen = () => {
           defaultValue=""
           render={({ field: { onChange, value } }) => (
             <ModalSelector
-              data={difficultyLevelOptions}
+              data={[
+                { key: 'easy', label: 'Easy' },
+                { key: 'medium', label: 'Medium' },
+                { key: 'hard', label: 'Hard' },
+              ]}
               initValue="Select Difficulty Level"
               onChange={(option) => onChange(option.key)}
               style={styles.modalSelector}
@@ -154,7 +150,7 @@ const MainScreen = () => {
                 style={styles.input}
                 editable={false}
                 placeholder="Select Difficulty Level"
-                value={difficultyLevelOptions.find(option => option.key === value)?.label}
+                value={value}
               />
             </ModalSelector>
           )}
@@ -169,7 +165,7 @@ const MainScreen = () => {
           defaultValue={0}
           render={({ field: { onChange, value } }) => (
             <ModalSelector
-              data={timeTakenOptions}
+              data={[...Array(121).keys()].map((val) => ({ key: val, label: `${val}` })).concat({ key: '>120', label: 'Greater than 120' })}
               initValue="Select Time Taken"
               onChange={(option) => onChange(option.key)}
               style={styles.modalSelector}
@@ -178,7 +174,7 @@ const MainScreen = () => {
                 style={styles.input}
                 editable={false}
                 placeholder="Select Time Taken"
-                value={value === '>120' ? 'Greater than 120' : `${value}`}
+                value={value}
               />
             </ModalSelector>
           )}
@@ -257,163 +253,222 @@ const MainScreen = () => {
           name="lastRevisitDate"
           defaultValue={new Date()}
           render={({ field: { value } }) => (
+           
             <>
-              <TouchableOpacity onPress={() => setShowLastRevisitDatePicker(true)} style={styles.dateButton}>
-                <Text>{new Date(value).toDateString()}</Text>
-              </TouchableOpacity>
-              {showLastRevisitDatePicker && (
-                <DateTimePicker
-                  value={new Date(value)}
-                  mode="date"
-                  display="default"
-                  onChange={onLastRevisitDateChange}
-                />
-              )}
-            </>
-          )}
-        />
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Revisit Frequency (days)</Text>
-        <Controller
-          control={control}
-          name="revisitFrequency"
-          defaultValue={14}
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Revisit Frequency (days)"
-              keyboardType="numeric"
-              value={value.toString()}
-              onChangeText={(text) => onChange(Number(text))}
-            />
-          )}
-        />
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Time Complexity</Text>
-        <Controller
-          control={control}
-          name="timeComplexity"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Time Complexity"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Space Complexity</Text>
-        <Controller
-          control={control}
-          name="spaceComplexity"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Space Complexity"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Company Tags</Text>
-        <Controller
-          control={control}
-          name="companyTags"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Company Tags"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
-
-      <View style={styles.formGroup}>
-        <Button
-          title={editingIndex === -1 ? "Add Problem" : "Update Problem"}
-          onPress={handleSubmit(handleAddOrUpdateProblem)}
-        />
-      </View>
+            <TouchableOpacity onPress={() => setShowLastRevisitDatePicker(true)} style={styles.dateButton}>
+              <Text>{new Date(value).toDateString()}</Text>
+            </TouchableOpacity>
+            {showLastRevisitDatePicker && (
+              <DateTimePicker
+                value={new Date(value)}
+                mode="date"
+                display="default"
+                onChange={onLastRevisitDateChange}
+              />
+            )}
+          </>
+        )}
+      />
     </View>
-  );
 
-  const renderItem = ({ item, index }) => (
-    <View style={styles.record}>
-      <Text style={styles.label}>Problem Name: </Text>
-      <TouchableOpacity onPress={() => editProblem(index)}>
-        <Text style={styles.recordText}>{item.problemName}</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.label}>Problem Link: </Text>
-      <TouchableOpacity onPress={() => Linking.openURL(item.problemLink)}>
-        <Text style={[styles.recordText, styles.link]}>{item.problemLink}</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.label}>Difficulty Level: </Text>
-      <Text style={styles.recordText}>{item.difficultyLevel}</Text>
-
-      <Text style={styles.label}>Time Taken: </Text>
-      <Text style={styles.recordText}>{item.timeTaken}</Text>
-
-      <Text style={styles.label}>First Attempt Date: </Text>
-      <Text style={styles.recordText}>{item.firstAttemptDate}</Text>
-
-      <Text style={styles.label}>Notes: </Text>
-      <Text style={styles.recordText}>{item.notes}</Text>
-
-      <Text style={styles.label}>Revisit Date: </Text>
-      <Text style={styles.recordText}>{item.revisitDate}</Text>
-
-      <Text style={styles.label}>Last Revisit Date: </Text>
-      <Text style={styles.recordText}>{item.lastRevisitDate}</Text>
-
-      <Text style={styles.label}>Revisit Frequency: </Text>
-      <Text style={styles.recordText}>{item.revisitFrequency}</Text>
-
-      <Text style={styles.label}>Time Complexity: </Text>
-      <Text style={styles.recordText}>{item.timeComplexity}</Text>
-
-      <Text style={styles.label}>Space Complexity: </Text>
-      <Text style={styles.recordText}>{item.spaceComplexity}</Text>
-
-      <Text style={styles.label}>Company Tags: </Text>
-      <Text style={styles.recordText}>{item.companyTags}</Text>
-
-      <View style={styles.buttonContainer}>
-        <Button title="Edit" onPress={() => editProblem(index)} />
-        <Button title="Delete" onPress={() => deleteProblem(index)} />
-      </View>
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>Revisit Frequency (days)</Text>
+      <Controller
+        control={control}
+        name="revisitFrequency"
+        defaultValue={14}
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            style={styles.input}
+            placeholder="Revisit Frequency (days)"
+            keyboardType="numeric"
+            value={value.toString()}
+            onChangeText={(text) => onChange(Number(text))}
+          />
+        )}
+      />
     </View>
-  );
 
-  return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
-      <SafeAreaView style={styles.container}>
-        <FlatList
-          ListHeaderComponent={renderForm}
-          data={records}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderItem}
-        />
-      </SafeAreaView>
-    </KeyboardAvoidingView>
-  );
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>Time Complexity</Text>
+      <Controller
+        control={control}
+        name="timeComplexity"
+        defaultValue=""
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            style={styles.input}
+            placeholder="Time Complexity"
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
+      />
+    </View>
+
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>Space Complexity</Text>
+      <Controller
+        control={control}
+        name="spaceComplexity"
+        defaultValue=""
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            style={styles.input}
+            placeholder="Space Complexity"
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
+      />
+    </View>
+
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>Company Tags</Text>
+      <Controller
+        control={control}
+        name="companyTags"
+        defaultValue=""
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            style={styles.input}
+            placeholder="Company Tags"
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
+      />
+    </View>
+
+    <View style={styles.buttonGroup}>
+      <Button
+        mode="contained"
+        onPress={handleSubmit(handleAddOrUpdateProblem)}
+        style={styles.button}
+      >
+        {selectedRecord ? "Update Problem" : "Add Problem"}
+      </Button>
+      <Button
+        mode="contained"
+        onPress={() => {
+          setShowForm(false);
+          reset();
+          setSelectedRecord(null);
+        }}
+        style={styles.button}
+      >
+        Cancel
+      </Button>
+    </View>
+  </View>
+);
+
+const renderListItem = ({ item }) => (
+  <TouchableOpacity onPress={() => editProblem(item)} style={styles.listItem}>
+    <Text style={styles.listItemText}>{item.problemName}</Text>
+    <Text style={styles.listItemText}>{item.revisitDate}</Text>
+  </TouchableOpacity>
+);
+
+return (
+  <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
+    <SafeAreaView style={styles.container}>
+      <FlatList
+        data={records}
+        keyExtractor={(item) => item.id}
+        renderItem={renderListItem}
+      />
+      <TouchableOpacity
+        style={styles.newProblemButton}
+        onPress={() => setShowForm(true)}
+      >
+        <Text style={styles.newProblemButtonText}>New Problem</Text>
+      </TouchableOpacity>
+      <Modal
+        visible={showForm}
+        animationType="slide"
+      >
+        <SafeAreaView style={styles.container}>
+          <FlatList
+            ListHeaderComponent={renderForm}
+            data={[]}
+            keyExtractor={(item, index) => index.toString()}
+          />
+        </SafeAreaView>
+      </Modal>
+    </SafeAreaView>
+  </KeyboardAvoidingView>
+);
 };
 
 export default MainScreen;
 
+const styles = StyleSheet.create({
+container: {
+  flex: 1,
+  backgroundColor: '#f5f5f5',
+},
+formContainer: {
+  padding: 20,
+},
+formGroup: {
+  marginBottom: 15,
+},
+label: {
+  marginBottom: 5,
+  fontWeight: 'bold',
+},
+input: {
+  height: 40,
+  borderColor: 'gray',
+  borderWidth: 1,
+  paddingLeft: 10,
+  backgroundColor: '#fff',
+  borderRadius: 5,
+},
+dateButton: {
+  height: 40,
+  justifyContent: 'center',
+  paddingLeft: 10,
+  borderColor: 'gray',
+  borderWidth: 1,
+  backgroundColor: '#fff',
+  borderRadius: 5,
+},
+modalSelector: {
+  borderColor: 'gray',
+  borderWidth: 1,
+  borderRadius: 5,
+  backgroundColor: '#fff',
+},
+listItem: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  padding: 15,
+  borderBottomWidth: 1,
+  borderBottomColor: '#ccc',
+},
+listItemText: {
+  fontSize: 16,
+},
+newProblemButton: {
+  position: 'absolute',
+  bottom: 20,
+  right: 20,
+  backgroundColor: '#007bff',
+  borderRadius: 30,
+  padding: 15,
+},
+newProblemButtonText: {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: 'bold',
+},
+buttonGroup: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+},
+button: {
+  margin: 10,
+},
+});

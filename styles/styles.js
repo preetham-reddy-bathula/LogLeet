@@ -1,18 +1,15 @@
-// src/styles/styles.js
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    marginTop: 20,
   },
   formContainer: {
     padding: 20,
   },
   formGroup: {
     marginBottom: 15,
-    width: '100%',
   },
   label: {
     marginBottom: 5,
@@ -26,18 +23,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 5,
   },
-  pickerWrapper: {
-    borderColor: 'gray',
-    borderWidth: 1,
-    borderRadius: 5,
-    backgroundColor: '#fff',
-  },
-  modalSelector: {
-    borderColor: 'gray',
-    borderWidth: 1,
-    borderRadius: 5,
-    backgroundColor: '#fff',
-  },
   dateButton: {
     height: 40,
     justifyContent: 'center',
@@ -47,29 +32,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 5,
   },
-  record: {
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    padding: 10,
-    marginVertical: 5,
-    marginHorizontal: 10,
-    backgroundColor: '#fff',
+  modalSelector: {
+    borderColor: 'gray',
+    borderWidth: 1,
     borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-    elevation: 3,
+    backgroundColor: '#fff',
   },
-  recordText: {
-    marginVertical: 2,
-    fontSize: 14,
+  listItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
   },
-  link: {
-    color: 'blue',
+  listItemText: {
+    fontSize: 16,
+  },
+  newProblemButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#007bff',
+    borderRadius: 30,
+    padding: 15,
+  },
+  newProblemButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  button: {
+    margin: 10,
   },
 });
 
