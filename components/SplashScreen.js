@@ -6,7 +6,8 @@ const SplashScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>LogLeet</Text>
-      <ActivityIndicator size="large" color="#0000ff" />
+      <Text style={styles.caption}>Keep a track of your coding journey!</Text>
+      <ActivityIndicator size="large" color='#800000' />
     </View>
   );
 };

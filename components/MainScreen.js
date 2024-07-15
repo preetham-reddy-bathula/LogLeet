@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Modal, StyleSheet, StatusBar, Alert, BackHandler
+  View, Text, FlatList, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Modal, StatusBar, Alert, BackHandler
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
-import { TextInput, Button } from 'react-native-paper';
+import { TextInput, Button, Appbar } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ModalSelector from 'react-native-modal-selector';
 import { ref, set, push, onValue, remove, update } from 'firebase/database';
@@ -11,6 +11,7 @@ import { database } from '../services/firebase';
 import { scheduleNotification } from '../services/notificationService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import styles from '../styles/styles'; // Import the styles from styles.js
 
 const MainScreen = () => {
   const { control, handleSubmit, reset, setValue, watch } = useForm();
@@ -273,7 +274,7 @@ const MainScreen = () => {
           )}
         />
       </View>
-
+  
       <View style={styles.formGroup}>
         <Text style={styles.label}>Next Visit Date</Text>
         <Controller
@@ -297,7 +298,7 @@ const MainScreen = () => {
           )}
         />
       </View>
-
+  
       <View style={styles.formGroup}>
         <Text style={styles.label}>Time Complexity</Text>
         <Controller
@@ -314,7 +315,7 @@ const MainScreen = () => {
           )}
         />
       </View>
-
+  
       <View style={styles.formGroup}>
         <Text style={styles.label}>Space Complexity</Text>
         <Controller
@@ -331,7 +332,7 @@ const MainScreen = () => {
           )}
         />
       </View>
-
+  
       <View style={styles.formGroup}>
         <Text style={styles.label}>Notes</Text>
         <Controller
@@ -348,7 +349,7 @@ const MainScreen = () => {
           )}
         />
       </View>
-
+  
       <View style={styles.formGroup}>
         <Text style={styles.label}>Company Tags</Text>
         <Controller
@@ -365,7 +366,7 @@ const MainScreen = () => {
           )}
         />
       </View>
-
+  
       <View style={styles.buttonGroup}>
         <Button
           mode="contained"
@@ -401,7 +402,7 @@ const MainScreen = () => {
       </View>
     </View>
   );
-
+  
   const renderListItem = ({ item }) => (
     <TouchableOpacity
       onPress={() => editProblem(item)}
@@ -418,10 +419,13 @@ const MainScreen = () => {
       </View>
     </TouchableOpacity>
   );
-
+  
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
+      <Appbar.Header style={{ backgroundColor: '#800000' }}>
+        <Appbar.Content title="LogLeet" style={{ alignItems: 'center' }} titleStyle={{ color: '#FFFFFF' }} />
+      </Appbar.Header>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
         <SafeAreaView style={styles.container}>
           <FlatList
@@ -454,81 +458,8 @@ const MainScreen = () => {
       </KeyboardAvoidingView>
     </SafeAreaProvider>
   );
-};
-
-export default MainScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  formContainer: {
-    padding: 20,
-  },
-  formGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    marginBottom: 5,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    paddingLeft: 10,
-    backgroundColor: '#fff',
-    borderRadius: 5,
-  },
-  dateButton: {
-    height: 40,
-    justifyContent: 'center',
-    paddingLeft: 10,
-    borderColor: 'gray',
-    borderWidth: 1,
-    backgroundColor: '#fff',
-    borderRadius: 5,
-  },
-  modalSelector: {
-    borderColor: 'gray',
-    borderWidth: 1,
-    borderRadius: 5,
-    backgroundColor: '#fff',
-  },
-  listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  listItemLabel: {
-    fontSize: 12,
-    color: '#888',
-  },
-  listItemText: {
-    fontSize: 16,
-  },
-  newProblemButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#007bff',
-    borderRadius: 30,
-    padding: 15,
-  },
-  newProblemButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  button: {
-    margin: 10,
-  },
-});
+  };
+  
+  export default MainScreen;
+  
+             
