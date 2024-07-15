@@ -122,8 +122,8 @@ This project is licensed under the MIT License.
 
 ### Contact
 
-- Preetham - [preetham.bathul@gmail.com](mailto:preetham.bathul@gmail.com)
-- LinkedIn - [https://www.linkedin.com/in/preetham-kumar-reddy-b-b6821116b/] (https://www.linkedin.com/in/preetham-kumar-reddy-b-b6821116b/)
-- Project Link: [https://github.com/preetham-reddy-bathula/LogLeet/] (https://github.com/preetham-reddy-bathula/LogLeet/)
+- Preetham - preetham.bathul@gmail.com
+- LinkedIn - https://www.linkedin.com/in/preetham-kumar-reddy-b-b6821116b/
+- Project Link: https://github.com/preetham-reddy-bathula/LogLeet/
 
 
