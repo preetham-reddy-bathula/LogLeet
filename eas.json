@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 10.1.1"
+    "version": ">= 0.38.1"
   },
   "build": {
     "development": {
@@ -10,7 +10,15 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {}
+    "production": {
+      "ios": {
+        "distribution": "store"
+      },
+      "android": {
+        "distribution": "store",
+        "buildType": "apk"
+      }
+    }
   },
   "submit": {
     "production": {}
