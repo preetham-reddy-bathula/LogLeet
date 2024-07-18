@@ -7,11 +7,11 @@ import { TextInput, Button, Appbar } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ModalSelector from 'react-native-modal-selector';
 import { ref, set, push, onValue, remove, update } from 'firebase/database';
-import { database } from '../services/firebase';
+import { auth, database } from '../services/firebase';
 import { scheduleNotification } from '../services/notificationService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import styles from '../styles/styles'; // Import the styles from styles.js
+import styles from '../styles/styles';
 
 const MainScreen = () => {
   const { control, handleSubmit, reset, setValue, watch } = useForm();
@@ -23,17 +23,22 @@ const MainScreen = () => {
   const [showNextVisitDatePicker, setShowNextVisitDatePicker] = useState(false);
   const navigation = useNavigation();
 
+  const user = auth.currentUser;
+  const uid = user ? user.uid : null;
+
   const firstAttemptDate = watch('firstAttemptDate');
   const revisitFrequency = watch('revisitFrequency');
 
   useEffect(() => {
-    const recordsRef = ref(database, 'records/');
-    onValue(recordsRef, (snapshot) => {
-      const data = snapshot.val();
-      const recordsList = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      setRecords(recordsList);
-    });
-  }, []);
+    if (uid) {
+      const recordsRef = ref(database, `users/${uid}/records/problemsList`);
+      onValue(recordsRef, (snapshot) => {
+        const data = snapshot.val();
+        const recordsList = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        setRecords(recordsList);
+      });
+    }
+  }, [uid]);
 
   useLayoutEffect(() => {
     const backAction = () => {
@@ -97,10 +102,10 @@ const MainScreen = () => {
     };
 
     if (selectedRecord) {
-      const recordRef = ref(database, `records/${selectedRecord.id}`);
+      const recordRef = ref(database, `users/${uid}/records/problemsList/${selectedRecord.id}`);
       update(recordRef, recordData);
     } else {
-      const newRecordRef = push(ref(database, 'records'));
+      const newRecordRef = push(ref(database, `users/${uid}/records/problemsList`));
       set(newRecordRef, recordData);
     }
 
@@ -122,7 +127,7 @@ const MainScreen = () => {
   };
 
   const deleteProblem = (record) => {
-    const recordRef = ref(database, `records/${record.id}`);
+    const recordRef = ref(database, `users/${uid}/records/problemsList/${record.id}`);
     remove(recordRef);
     setSelectedRecord(null);
   };
@@ -269,197 +274,200 @@ const MainScreen = () => {
               placeholder="Revisit Frequency (days)"
               keyboardType="numeric"
               value={value.toString()}
-              onChangeText={(text) => onChange(Number(text))}
-            />
-          )}
-        />
-      </View>
+              onChange={(text) => onChange(Number(text))}
+              />
+            )}
+          />
+        </View>
   
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Next Visit Date</Text>
-        <Controller
-          control={control}
-          name="nextVisitDate"
-          defaultValue={new Date()}
-          render={({ field: { value } }) => (
-            <>
-              <TouchableOpacity onPress={() => setShowNextVisitDatePicker(true)} style={styles.dateButton} disabled>
-                <Text>{new Date(value).toDateString()}</Text>
-              </TouchableOpacity>
-              {showNextVisitDatePicker && (
-                <DateTimePicker
-                  value={new Date(value)}
-                  mode="date"
-                  display="default"
-                  onChange={onNextVisitDateChange}
-                />
-              )}
-            </>
-          )}
-        />
-      </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Next Visit Date</Text>
+          <Controller
+            control={control}
+            name="nextVisitDate"
+            defaultValue={new Date()}
+            render={({ field: { value } }) => (
+              <>
+                <TouchableOpacity onPress={() => setShowNextVisitDatePicker(true)} style={styles.dateButton} disabled>
+                  <Text>{new Date(value).toDateString()}</Text>
+                </TouchableOpacity>
+                {showNextVisitDatePicker && (
+                  <DateTimePicker
+                    value={new Date(value)}
+                    mode="date"
+                    display="default"
+                    onChange={onNextVisitDateChange}
+                  />
+                )}
+              </>
+            )}
+          />
+        </View>
   
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Time Complexity</Text>
-        <Controller
-          control={control}
-          name="timeComplexity"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Time Complexity"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Time Complexity</Text>
+          <Controller
+            control={control}
+            name="timeComplexity"
+            defaultValue=""
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={styles.input}
+                placeholder="Time Complexity"
+                value={value}
+                onChangeText={onChange}
+              />
+            )}
+          />
+        </View>
   
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Space Complexity</Text>
-        <Controller
-          control={control}
-          name="spaceComplexity"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Space Complexity"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Space Complexity</Text>
+          <Controller
+            control={control}
+            name="spaceComplexity"
+            defaultValue=""
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={styles.input}
+                placeholder="Space Complexity"
+                value={value}
+                onChangeText={onChange}
+              />
+            )}
+          />
+        </View>
   
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Notes</Text>
-        <Controller
-          control={control}
-          name="notes"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Notes"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Notes</Text>
+          <Controller
+            control={control}
+            name="notes"
+            defaultValue=""
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={styles.input}
+                placeholder="Notes"
+                value={value}
+                onChangeText={onChange}
+              />
+            )}
+          />
+        </View>
   
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Company Tags</Text>
-        <Controller
-          control={control}
-          name="companyTags"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Company Tags"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-      </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Company Tags</Text>
+          <Controller
+            control={control}
+            name="companyTags"
+            defaultValue=""
+            render={({ field: { onChange, value } }) => (
+              <TextInput
+                style={styles.input}
+                placeholder="Company Tags"
+                value={value}
+                onChangeText={onChange}
+              />
+            )}
+          />
+        </View>
   
-      <View style={styles.buttonGroup}>
-        <Button
-          mode="contained"
-          onPress={() => {
-            setShowForm(false);
-            reset();
-            setSelectedRecord(null);
-          }}
-          style={styles.button}
-        >
-          Cancel
-        </Button>
-        {selectedRecord && (
+        <View style={styles.buttonGroup}>
           <Button
             mode="contained"
             onPress={() => {
-              deleteProblem(selectedRecord);
               setShowForm(false);
               reset();
+              setSelectedRecord(null);
             }}
             style={styles.button}
           >
-            Delete
+            Cancel
           </Button>
-        )}
-        <Button
-          mode="contained"
-          onPress={handleSubmit(handleAddOrUpdateProblem)}
-          style={styles.button}
-        >
-          {selectedRecord ? "Update Problem" : "Add Problem"}
-        </Button>
-      </View>
-    </View>
-  );
-  
-  const renderListItem = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => editProblem(item)}
-      onLongPress={() => handleLongPress(item)}
-      style={styles.listItem}
-    >
-      <View>
-        <Text style={styles.listItemLabel}>Problem Name:</Text>
-        <Text style={styles.listItemText}>{item.problemName}</Text>
-      </View>
-      <View>
-        <Text style={styles.listItemLabel}>Next Visit Date:</Text>
-        <Text style={styles.listItemText}>{item.nextVisitDate}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-  
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="light-content" />
-      <Appbar.Header style={{ backgroundColor: '#800000' }}>
-        <Appbar.Content title="LogLeet" style={{ alignItems: 'center' }} titleStyle={{ color: '#FFFFFF' }} />
-      </Appbar.Header>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
-        <SafeAreaView style={styles.container}>
-          <FlatList
-            data={records}
-            keyExtractor={(item) => item.id}
-            renderItem={renderListItem}
-          />
-          <TouchableOpacity
-            style={styles.newProblemButton}
-            onPress={() => {
-              reset();
-              setShowForm(true);
-            }}
+          {selectedRecord && (
+            <Button
+              mode="contained"
+              onPress={() => {
+                deleteProblem(selectedRecord);
+                setShowForm(false);
+                reset();
+              }}
+              style={styles.button}
+            >
+              Delete
+            </Button>
+          )}
+          <Button
+            mode="contained"
+            onPress={handleSubmit(handleAddOrUpdateProblem)}
+            style={styles.button}
           >
-            <Text style={styles.newProblemButtonText}>New Problem</Text>
-          </TouchableOpacity>
-          <Modal
-            visible={showForm}
-            animationType="slide"
-          >
-            <SafeAreaView style={styles.container}>
-              <FlatList
-                ListHeaderComponent={renderForm}
-                data={[]}
-                keyExtractor={(item, index) => index.toString()}
-              />
-            </SafeAreaView>
-          </Modal>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </SafeAreaProvider>
-  );
+            {selectedRecord ? "Update Problem" : "Add Problem"}
+          </Button>
+        </View>
+      </View>
+    );
+  
+    const renderListItem = ({ item }) => (
+      <TouchableOpacity
+        onPress={() => editProblem(item)}
+        onLongPress={() => handleLongPress(item)}
+        style={styles.listItem}
+      >
+        <View>
+          <Text style={styles.listItemLabel}>Problem Name:</Text>
+          <Text style={styles.listItemText}>{item.problemName}</Text>
+        </View>
+        <View>
+          <Text style={styles.listItemLabel}>Next Visit Date:</Text>
+          <Text style={styles.listItemText}>{item.nextVisitDate}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" />
+        <Appbar.Header style={{ backgroundColor: '#800000' }}>
+          <Appbar.Content title="LogLeet" style={{ alignItems: 'center' }} titleStyle={{ color: '#FFFFFF' }} />
+        </Appbar.Header>
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
+          <SafeAreaView style={styles.container}>
+            <FlatList
+              data={records}
+              keyExtractor={(item) => item.id}
+              renderItem={renderListItem}
+            />
+            <TouchableOpacity
+              style={styles.newProblemButton}
+              onPress={() => {
+                reset();
+                setShowForm(true);
+              }}
+            >
+              <Text style={styles.newProblemButtonText}>New Problem</Text>
+            </TouchableOpacity>
+            <Modal
+              visible={showForm}
+              animationType="slide"
+            >
+              <SafeAreaView style={styles.container}>
+                <Appbar.Header style={{ backgroundColor: '#800000' }}>
+                  <Appbar.BackAction onPress={() => setShowForm(false)} />
+                  <Appbar.Content title="New Problem" titleStyle={{ color: '#FFFFFF' }} />
+                </Appbar.Header>
+                <FlatList
+                  ListHeaderComponent={renderForm}
+                  data={[]}
+                  keyExtractor={(item, index) => index.toString()}
+                />
+              </SafeAreaView>
+            </Modal>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaProvider>
+    );
   };
   
   export default MainScreen;
   
-             

@@ -1,10 +1,12 @@
-// src/styles.js
+// src/styles/styles.js
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f0f5',
+    justifyContent: 'center',
+    padding: 20,
   },
   formContainer: {
     padding: 20,
@@ -96,13 +98,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   button: {
-    backgroundColor:'#800000',
+    backgroundColor: '#800000',
     margin: 10,
     borderRadius: 10,
   },
   caption: {
-    
-  }
+    marginTop: 10,
+    fontSize: 18,
+    color: '#555',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#800000',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  link: {
+    marginTop: 20,
+    color: '#800000',
+    textAlign: 'center',
+  },
 });
 
 export default styles;
