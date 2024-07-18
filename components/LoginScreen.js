@@ -1,20 +1,20 @@
-import React from 'react';
-import { View, Text } from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { TextInput, Button } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { TextInput, Button, Text } from 'react-native-paper';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import styles from '../styles/styles';
+import { useNavigation } from '@react-navigation/native';
 
-const LoginScreen = ({ navigation }) => {
-  const { control, handleSubmit } = useForm();
+const LoginScreen = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const navigation = useNavigation();
+  const auth = getAuth();
 
-  const onLogin = async (data) => {
-    const auth = getAuth();
+  const handleLogin = async () => {
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
-      navigation.replace('Main');
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      console.error('Login error', error);
+      console.error(error);
       alert(error.message);
     }
   };
@@ -22,49 +22,73 @@ const LoginScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Email</Text>
-        <Controller
-          control={control}
-          name="email"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={value}
-              onChangeText={onChange}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          )}
-        />
-      </View>
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Password</Text>
-        <Controller
-          control={control}
-          name="password"
-          defaultValue=""
-          render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={value}
-              onChangeText={onChange}
-              secureTextEntry
-            />
-          )}
-        />
-      </View>
-      <Button mode="contained" onPress={handleSubmit(onLogin)} style={styles.button}>
+      <TextInput
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        style={styles.input}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        theme={{ colors: { text: 'black', primary: '#800000' } }}
+      />
+      <TextInput
+        label="Password"
+        value={password}
+        onChangeText={setPassword}
+        style={styles.input}
+        secureTextEntry
+        theme={{ colors: { text: 'black', primary: '#800000' } }}
+      />
+      <Button
+        mode="contained"
+        onPress={handleLogin}
+        style={styles.button}
+        labelStyle={styles.buttonText}
+      >
         Login
       </Button>
-      <Button mode="text" onPress={() => navigation.navigate('Signup')} style={styles.link}>
-        Don't have an account? Sign up
+      <Button
+        onPress={() => navigation.navigate('Signup')}
+        style={styles.link}
+        labelStyle={styles.linkText}
+      >
+        Don't have an account? Sign Up
       </Button>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: 'black',
+  },
+  input: {
+    marginBottom: 20,
+    backgroundColor: '#fff',
+  },
+  button: {
+    marginBottom: 20,
+    backgroundColor: '#800000',
+  },
+  buttonText: {
+    color: 'white',
+  },
+  link: {
+    marginTop: 10,
+  },
+  linkText: {
+    color: '#800000',
+  },
+});
 
 export default LoginScreen;

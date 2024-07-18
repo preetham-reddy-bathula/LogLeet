@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Modal, StatusBar, Alert, BackHandler
+  View, Text, FlatList, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Modal, StatusBar, Alert, BackHandler, ScrollView
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
-import { TextInput, Button, Appbar } from 'react-native-paper';
+import { TextInput, Button, Appbar, Avatar, Menu } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ModalSelector from 'react-native-modal-selector';
 import { ref, set, push, onValue, remove, update } from 'firebase/database';
-import { auth, database } from '../services/firebase';
+import { getAuth } from 'firebase/auth';
+import { database } from '../services/firebase';
 import { scheduleNotification } from '../services/notificationService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import styles from '../styles/styles';
+import axios from 'axios';
 
 const MainScreen = () => {
   const { control, handleSubmit, reset, setValue, watch } = useForm();
@@ -21,24 +23,27 @@ const MainScreen = () => {
   const [showFirstAttemptDatePicker, setShowFirstAttemptDatePicker] = useState(false);
   const [showLastVisitedDatePicker, setShowLastVisitedDatePicker] = useState(false);
   const [showNextVisitDatePicker, setShowNextVisitDatePicker] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [problemSuggestions, setProblemSuggestions] = useState([]);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const navigation = useNavigation();
-
-  const user = auth.currentUser;
-  const uid = user ? user.uid : null;
 
   const firstAttemptDate = watch('firstAttemptDate');
   const revisitFrequency = watch('revisitFrequency');
+  const user = getAuth().currentUser;
+  const userInitial = (user?.email[0] || '').toUpperCase();
+  const userUid = user ? user.uid : null;
 
   useEffect(() => {
-    if (uid) {
-      const recordsRef = ref(database, `users/${uid}/records/problemsList`);
+    if (userUid) {
+      const recordsRef = ref(database, `users/${userUid}/records`);
       onValue(recordsRef, (snapshot) => {
         const data = snapshot.val();
         const recordsList = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
         setRecords(recordsList);
       });
     }
-  }, [uid]);
+  }, [userUid]);
 
   useLayoutEffect(() => {
     const backAction = () => {
@@ -90,6 +95,8 @@ const MainScreen = () => {
   };
 
   const handleAddOrUpdateProblem = (data) => {
+    if (!userUid) return;
+
     const firstAttemptDate = data.firstAttemptDate instanceof Date ? data.firstAttemptDate : new Date(data.firstAttemptDate);
     const lastVisitedDate = data.lastVisitedDate instanceof Date ? data.lastVisitedDate : new Date(data.lastVisitedDate);
     const nextVisitDate = data.nextVisitDate instanceof Date ? data.nextVisitDate : new Date(data.nextVisitDate);
@@ -102,10 +109,10 @@ const MainScreen = () => {
     };
 
     if (selectedRecord) {
-      const recordRef = ref(database, `users/${uid}/records/problemsList/${selectedRecord.id}`);
+      const recordRef = ref(database, `users/${userUid}/records/${selectedRecord.id}`);
       update(recordRef, recordData);
     } else {
-      const newRecordRef = push(ref(database, `users/${uid}/records/problemsList`));
+      const newRecordRef = push(ref(database, `users/${userUid}/records`));
       set(newRecordRef, recordData);
     }
 
@@ -127,7 +134,9 @@ const MainScreen = () => {
   };
 
   const deleteProblem = (record) => {
-    const recordRef = ref(database, `users/${uid}/records/problemsList/${record.id}`);
+    if (!userUid) return;
+
+    const recordRef = ref(database, `users/${userUid}/records/${record.id}`);
     remove(recordRef);
     setSelectedRecord(null);
   };
@@ -150,6 +159,56 @@ const MainScreen = () => {
     );
   };
 
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
+
+  const logout = () => {
+    getAuth().signOut();
+  };
+
+  const fetchProblemSuggestions = async (query) => {
+    if (!query) {
+      setProblemSuggestions([]);
+      return;
+    }
+
+    setIsFetchingSuggestions(true);
+
+    try {
+      const response = await axios.post('https://leetcode.com/graphql', {
+        query: `
+          query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
+            problemsetQuestionList: questionList(
+              categorySlug: $categorySlug
+              limit: $limit
+              skip: $skip
+              filters: $filters
+            ) {
+              questions: data {
+                title
+                titleSlug
+              }
+            }
+          }
+        `,
+        variables: {
+          categorySlug: "",
+          skip: 0,
+          limit: 100000,
+          filters: {}
+        }
+      });
+
+      const problems = response.data.data.problemsetQuestionList.questions;
+      const filteredProblems = problems.filter(problem => problem.title.toLowerCase().includes(query.toLowerCase()));
+      setProblemSuggestions(filteredProblems);
+    } catch (error) {
+      console.error('Error fetching problem suggestions:', error);
+    }
+
+    setIsFetchingSuggestions(false);
+  };
+
   const renderForm = () => (
     <View style={styles.formContainer}>
       <View style={styles.formGroup}>
@@ -159,18 +218,41 @@ const MainScreen = () => {
           name="problemName"
           defaultValue=""
           render={({ field: { onChange, value } }) => (
-            <TextInput
-              style={styles.input}
-              placeholder="Problem Name"
-              value={value}
-              onChangeText={onChange}
-            />
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Problem Name"
+                value={value}
+                onChangeText={(text) => {
+                  onChange(text);
+                  fetchProblemSuggestions(text);
+                }}
+                theme={{ colors: { text: 'black', primary: '#800000' } }}
+              />
+              {isFetchingSuggestions ? (
+                <Text>Loading...</Text>
+              ) : (
+                <ScrollView style={styles.suggestionsContainer}>
+                  {problemSuggestions.map((suggestion) => (
+                    <TouchableOpacity
+                      key={suggestion.titleSlug}
+                      onPress={() => {
+                        onChange(suggestion.title);
+                        setProblemSuggestions([]);
+                      }}
+                    >
+                      <Text style={styles.suggestionItem}>{suggestion.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </>
           )}
         />
       </View>
 
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Problem Link</Text>
+      <Text style={styles.label}>Problem Link</Text>
         <Controller
           control={control}
           name="problemLink"
@@ -181,6 +263,7 @@ const MainScreen = () => {
               placeholder="Problem Link"
               value={value}
               onChangeText={onChange}
+              theme={{ colors: { text: 'black', primary: '#800000' } }}
             />
           )}
         />
@@ -208,6 +291,7 @@ const MainScreen = () => {
                 editable={false}
                 placeholder="Select Difficulty Level"
                 value={value}
+                theme={{ colors: { text: 'black', primary: '#800000' } }}
               />
             </ModalSelector>
           )}
@@ -246,17 +330,9 @@ const MainScreen = () => {
           defaultValue={new Date()}
           render={({ field: { value } }) => (
             <>
-              <TouchableOpacity onPress={() => setShowLastVisitedDatePicker(true)} style={styles.dateButton} disabled>
+              <TouchableOpacity style={styles.dateButton} disabled>
                 <Text>{new Date(value).toDateString()}</Text>
               </TouchableOpacity>
-              {showLastVisitedDatePicker && (
-                <DateTimePicker
-                  value={new Date(value)}
-                  mode="date"
-                  display="default"
-                  onChange={onLastVisitedDateChange}
-                />
-              )}
             </>
           )}
         />
@@ -274,200 +350,208 @@ const MainScreen = () => {
               placeholder="Revisit Frequency (days)"
               keyboardType="numeric"
               value={value.toString()}
-              onChange={(text) => onChange(Number(text))}
-              />
-            )}
-          />
-        </View>
-  
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Next Visit Date</Text>
-          <Controller
-            control={control}
-            name="nextVisitDate"
-            defaultValue={new Date()}
-            render={({ field: { value } }) => (
-              <>
-                <TouchableOpacity onPress={() => setShowNextVisitDatePicker(true)} style={styles.dateButton} disabled>
-                  <Text>{new Date(value).toDateString()}</Text>
-                </TouchableOpacity>
-                {showNextVisitDatePicker && (
-                  <DateTimePicker
-                    value={new Date(value)}
-                    mode="date"
-                    display="default"
-                    onChange={onNextVisitDateChange}
-                  />
-                )}
-              </>
-            )}
-          />
-        </View>
-  
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Time Complexity</Text>
-          <Controller
-            control={control}
-            name="timeComplexity"
-            defaultValue=""
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="Time Complexity"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-        </View>
-  
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Space Complexity</Text>
-          <Controller
-            control={control}
-            name="spaceComplexity"
-            defaultValue=""
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="Space Complexity"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-        </View>
-  
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Notes</Text>
-          <Controller
-            control={control}
-            name="notes"
-            defaultValue=""
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="Notes"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-        </View>
-  
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Company Tags</Text>
-          <Controller
-            control={control}
-            name="companyTags"
-            defaultValue=""
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="Company Tags"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-        </View>
-  
-        <View style={styles.buttonGroup}>
+              onChangeText={(text) => onChange(Number(text))}
+              theme={{ colors: { text: 'black', primary: '#800000' } }}
+            />
+          )}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Next Visit Date</Text>
+        <Controller
+          control={control}
+          name="nextVisitDate"
+          defaultValue={new Date()}
+          render={({ field: { value } }) => (
+            <>
+              <TouchableOpacity style={styles.dateButton} disabled>
+                <Text>{new Date(value).toDateString()}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Time Complexity</Text>
+        <Controller
+          control={control}
+          name="timeComplexity"
+          defaultValue=""
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Time Complexity"
+              value={value}
+              onChangeText={onChange}
+              theme={{ colors: { text: 'black', primary: '#800000' } }}
+            />
+          )}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Space Complexity</Text>
+        <Controller
+          control={control}
+          name="spaceComplexity"
+          defaultValue=""
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Space Complexity"
+              value={value}
+              onChangeText={onChange}
+              theme={{ colors: { text: 'black', primary: '#800000' } }}
+            />
+          )}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Notes</Text>
+        <Controller
+          control={control}
+          name="notes"
+          defaultValue=""
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Notes"
+              value={value}
+              onChangeText={onChange}
+              theme={{ colors: { text: 'black', primary: '#800000' } }}
+            />
+          )}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Company Tags</Text>
+        <Controller
+          control={control}
+          name="companyTags"
+          defaultValue=""
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Company Tags"
+              value={value}
+              onChangeText={onChange}
+              theme={{ colors: { text: 'black', primary: '#800000' } }}
+            />
+          )}
+        />
+      </View>
+
+      <View style={styles.buttonGroup}>
+        <Button
+          mode="contained"
+          onPress={() => {
+            setShowForm(false);
+            reset();
+            setSelectedRecord(null);
+          }}
+          style={styles.button}
+          labelStyle={styles.buttonText}
+        >
+          Cancel
+        </Button>
+        {selectedRecord && (
           <Button
             mode="contained"
             onPress={() => {
+              deleteProblem(selectedRecord);
               setShowForm(false);
               reset();
-              setSelectedRecord(null);
             }}
             style={styles.button}
+            labelStyle={styles.buttonText}
           >
-            Cancel
+            Delete
           </Button>
-          {selectedRecord && (
-            <Button
-              mode="contained"
-              onPress={() => {
-                deleteProblem(selectedRecord);
-                setShowForm(false);
-                reset();
-              }}
-              style={styles.button}
-            >
-              Delete
-            </Button>
-          )}
-          <Button
-            mode="contained"
-            onPress={handleSubmit(handleAddOrUpdateProblem)}
-            style={styles.button}
-          >
-            {selectedRecord ? "Update Problem" : "Add Problem"}
-          </Button>
-        </View>
+        )}
+        <Button
+          mode="contained"
+          onPress={handleSubmit(handleAddOrUpdateProblem)}
+          style={styles.button}
+          labelStyle={styles.buttonText}
+        >
+          {selectedRecord ? "Update Problem" : "Add Problem"}
+        </Button>
       </View>
-    );
-  
-    const renderListItem = ({ item }) => (
-      <TouchableOpacity
-        onPress={() => editProblem(item)}
-        onLongPress={() => handleLongPress(item)}
-        style={styles.listItem}
-      >
-        <View>
-          <Text style={styles.listItemLabel}>Problem Name:</Text>
-          <Text style={styles.listItemText}>{item.problemName}</Text>
-        </View>
-        <View>
-          <Text style={styles.listItemLabel}>Next Visit Date:</Text>
-          <Text style={styles.listItemText}>{item.nextVisitDate}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  
-    return (
-      <SafeAreaProvider>
-        <StatusBar barStyle="light-content" />
-        <Appbar.Header style={{ backgroundColor: '#800000' }}>
-          <Appbar.Content title="LogLeet" style={{ alignItems: 'center' }} titleStyle={{ color: '#FFFFFF' }} />
-        </Appbar.Header>
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
-          <SafeAreaView style={styles.container}>
-            <FlatList
-              data={records}
-              keyExtractor={(item) => item.id}
-              renderItem={renderListItem}
-            />
-            <TouchableOpacity
-              style={styles.newProblemButton}
-              onPress={() => {
-                reset();
-                setShowForm(true);
-              }}
-            >
-              <Text style={styles.newProblemButtonText}>New Problem</Text>
+    </View>
+  );
+
+  const renderListItem = ({ item }) => (
+    <TouchableOpacity
+      onPress={() => editProblem(item)}
+      onLongPress={() => handleLongPress(item)}
+      style={styles.listItem}
+    >
+      <View>
+        <Text style={styles.listItemLabel}>Problem Name:</Text>
+        <Text style={styles.listItemText}>{item.problemName}</Text>
+      </View>
+      <View>
+        <Text style={styles.listItemLabel}>Next Visit Date:</Text>
+        <Text style={styles.listItemText}>{item.nextVisitDate}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaProvider>
+      <StatusBar barStyle="light-content" />
+      <Appbar.Header style={{ backgroundColor: '#800000' }}>
+        <Appbar.Content title="LogLeet" titleStyle={{ color: '#FFFFFF' }} />
+        <Menu
+          visible={menuVisible}
+          onDismiss={closeMenu}
+          anchor={
+            <TouchableOpacity onPress={openMenu}>
+              <Avatar.Text size={36} label={userInitial} />
             </TouchableOpacity>
-            <Modal
-              visible={showForm}
-              animationType="slide"
-            >
-              <SafeAreaView style={styles.container}>
-                <Appbar.Header style={{ backgroundColor: '#800000' }}>
-                  <Appbar.BackAction onPress={() => setShowForm(false)} />
-                  <Appbar.Content title="New Problem" titleStyle={{ color: '#FFFFFF' }} />
-                </Appbar.Header>
-                <FlatList
-                  ListHeaderComponent={renderForm}
-                  data={[]}
-                  keyExtractor={(item, index) => index.toString()}
-                />
-              </SafeAreaView>
-            </Modal>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </SafeAreaProvider>
-    );
-  };
-  
-  export default MainScreen;
-  
+          }
+        >
+          <Menu.Item onPress={logout} title="Logout" />
+        </Menu>
+      </Appbar.Header>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : null}>
+        <SafeAreaView style={styles.container}>
+          <FlatList
+            data={records}
+            keyExtractor={(item) => item.id}
+            renderItem={renderListItem}
+          />
+          <TouchableOpacity
+            style={styles.newProblemButton}
+            onPress={() => {
+              reset();
+              setShowForm(true);
+            }}
+          >
+            <Text style={styles.newProblemButtonText}>New Problem</Text>
+          </TouchableOpacity>
+          <Modal
+            visible={showForm}
+            animationType="slide"
+          >
+            <SafeAreaView style={styles.container}>
+              <FlatList
+                ListHeaderComponent={renderForm}
+                data={[]}
+                keyExtractor={(item, index) => index.toString()}
+              />
+            </SafeAreaView>
+          </Modal>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </SafeAreaProvider>
+  );
+};
+
+export default MainScreen;
+
+
